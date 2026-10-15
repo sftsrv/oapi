@@ -1,15 +1,12 @@
 package main
 
 import (
-	// "bufio"
 	"flag"
 	"fmt"
 	"os"
 
 	"github.com/sftsrv/oapi/internal/openapi"
-	// "strings"
-	// "github.com/sftsrv/oapi/tree"
-	// "github.com/sftsrv/oapi/ui"
+	"github.com/sftsrv/oapi/internal/ui"
 )
 
 var usage = `oapi
@@ -38,12 +35,10 @@ func main() {
 
 	path := os.Args[1]
 
-	result, err := openapi.FromFile(path)
+	spec, err := openapi.FromFile(path)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(result)
-
-	// ui.Run(t, *preview, *pattern, *flat)
+	ui.Run(spec, *flat)
 }

@@ -9,7 +9,13 @@ import (
 )
 
 type OpenAPISpec struct {
+	Info  Info             `json:"info"`
 	Paths map[string]Paths `json:"paths,omitempty"`
+}
+
+type Info struct {
+	Version string `json:"version"`
+	Title   string `json:"title"`
 }
 
 type Paths = map[string]Path
@@ -47,19 +53,19 @@ type Schema struct {
 	Properties map[string]Schema `json:"properties,omitempty"`
 }
 
-func FromFile(path string) (OpenAPISpec, error) {
+func FromFile(path string) (*OpenAPISpec, error) {
 	var result OpenAPISpec
 
 	bytes, err := os.ReadFile(path)
 	if err != nil {
-		return result, err
+		return &result, err
 	}
 
 	if strings.HasSuffix(path, ".json") {
 		err = json.Unmarshal(bytes, &result)
-		return result, err
+		return &result, err
 	}
 
 	err = yaml.Unmarshal(bytes, &result)
-	return result, err
+	return &result, err
 }
