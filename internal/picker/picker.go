@@ -2,15 +2,16 @@ package picker
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	lg "github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	lg "charm.land/lipgloss/v2"
 	"github.com/sftsrv/oapi/internal/theme"
 )
 
 type Model[I Item] struct {
-	accent    lg.Color
+	accent    color.Color
 	title     string
 	search    string
 	searching bool
@@ -68,7 +69,7 @@ func (m Model[I]) IsSearching() bool {
 	return m.searching
 }
 
-func (m Model[I]) Accent(accent lg.Color) Model[I] {
+func (m Model[I]) Accent(accent color.Color) Model[I] {
 	m.accent = accent
 	return m
 }
@@ -89,7 +90,7 @@ func truncate(str string, width int) string {
 		Render(str)
 }
 
-func indicator(accent lg.Color, selected bool, title string) string {
+func indicator(accent color.Color, selected bool, title string) string {
 	if !selected {
 		return lg.NewStyle().
 			PaddingRight(1).

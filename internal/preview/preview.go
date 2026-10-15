@@ -1,11 +1,13 @@
 package preview
 
 import (
+	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	lg "github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/glamour/v2"
+	lg "charm.land/lipgloss/v2"
 	"github.com/sftsrv/oapi/internal/openapi"
 	"github.com/sftsrv/oapi/internal/theme"
 )
@@ -16,6 +18,7 @@ type Model struct {
 	ready    bool
 	width    int
 	height   int
+	renderer *glamour.TermRenderer
 	viewport viewport.Model
 }
 
@@ -31,8 +34,26 @@ type ResizeMsg struct {
 	Adjust int
 }
 
-func New() Model {
-	return Model{}
+func newRenderer(width int) *glamour.TermRenderer {
+	hasDarkBG := lg.HasDarkBackground(os.Stdin, os.Stdout)
+
+	theme := "light"
+	if hasDarkBG {
+		theme = "dark"
+	}
+
+	renderer, _ := glamour.NewTermRenderer(glamour.WithWordWrap(width), glamour.WithStandardStyle(theme))
+
+	return renderer
+}
+
+func New(spec *openapi.OpenAPISpec) Model {
+	renderer := newRenderer(40)
+
+	return Model{
+		renderer: renderer,
+		spec:     spec,
+	}
 }
 
 func (m Model) SetPath(path string) (Model, tea.Cmd) {
@@ -73,17 +94,40 @@ func (m Model) Height(height int) Model {
 
 func (s Model) preview() tea.Cmd {
 	return func() tea.Msg {
+		md := ""
+
 		if s.path == "" {
-			return PreviewResultMsg{s.path, false, "top-level-preview"}
+			md += "# " + s.spec.Info.Title
+			md += "\n\n"
+			md += "> version: " + s.spec.Info.Version
+		} else {
+			parts := strings.Split(s.path, "/")
+			pathParts := parts[:len(parts)-1]
+			method := parts[len(parts)-1]
+
+			path := strings.Join(pathParts, "/")
+			p, ok := s.spec.Paths[path]
+
+			if !ok {
+				return nil
+			}
+
+			ep, ok := p[method]
+			if !ok {
+				return nil
+			}
+
+			md += "# " + strings.ToUpper(method) + ":" + path
+			md += "\n\n"
+			md += "> " + ep.Summary
 		}
 
-		parts := strings.Split(s.path, "/")
-		path := parts[:len(parts)-1]
-		method := parts[len(parts)-1]
+		rendered, err := s.renderer.Render(md)
+		if err != nil {
+			return PreviewResultMsg{s.path, true, err.Error()}
+		}
 
-		content := strings.Join(path, "/") + "\n" + method
-
-		return PreviewResultMsg{s.path, false, content}
+		return PreviewResultMsg{s.path, false, rendered}
 	}
 }
 
@@ -110,7 +154,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	case ResizeMsg:
 		m.width += msg.Adjust
-		m.viewport.Width = m.width
+		m.viewport.SetWidth(m.width)
+		m.renderer = newRenderer(m.width)
 
 	case tea.WindowSizeMsg:
 		if !m.ready {
@@ -119,7 +164,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			// we can initialize the viewport. The initial dimensions come in
 			// quickly, though asynchronously, which is why we wait for them
 			// here.
-			m.viewport = viewport.New(m.width, m.height-1)
+			m.viewport = viewport.New(viewport.WithHeight(m.height-1), viewport.WithWidth(m.width))
 			m.viewport.YPosition = 0
 			m.viewport.SetContent("")
 			m.ready = true
@@ -129,8 +174,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 			cmds = append(cmds, readyCmd)
 		} else {
-			m.viewport.Width = m.width
-			m.viewport.Height = m.height
+			m.viewport.SetWidth(m.width)
+			m.viewport.SetHeight(m.height)
 		}
 	}
 

@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	lg "github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	lg "charm.land/lipgloss/v2"
 	"github.com/sftsrv/oapi/internal/openapi"
 	"github.com/sftsrv/oapi/internal/picker"
 	"github.com/sftsrv/oapi/internal/preview"
@@ -176,12 +175,12 @@ func helpView(m Model) string {
 	return lg.NewStyle().Render(help)
 }
 
-func (m Model) View() string {
-	return lg.JoinVertical(
+func (m Model) View() tea.View {
+	return tea.NewView(lg.JoinVertical(
 		lg.Left,
 		lg.JoinHorizontal(lg.Top, m.pathPicker.View(), m.preview.View()),
 		helpView(m),
-	)
+	))
 }
 
 func initialModel(spec *openapi.OpenAPISpec, f *tree.Tree) Model {
@@ -191,7 +190,7 @@ func initialModel(spec *openapi.OpenAPISpec, f *tree.Tree) Model {
 		spec:       spec,
 		tree:       f,
 		pathPicker: picker.New[*tree.Item]().Title("Items").Accent(theme.ColorPrimary).Items(items),
-		preview:    preview.New(),
+		preview:    preview.New(spec),
 	}
 }
 
@@ -204,7 +203,7 @@ func endpointTree(spec *openapi.OpenAPISpec) *tree.Tree {
 	for path := range paths {
 		methods := maps.Keys(spec.Paths[path])
 		for method := range methods {
-			endpoint := fmt.Sprintf("%s/%s", path, strings.ToUpper(method))
+			endpoint := fmt.Sprintf("%s/%s", path, method)
 			endpoints = append(endpoints, endpoint)
 		}
 	}
@@ -220,10 +219,7 @@ func Run(spec *openapi.OpenAPISpec, flat bool) {
 	}
 
 	m := initialModel(spec, t)
-	p := tea.NewProgram(m,
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
-	)
+	p := tea.NewProgram(m)
 
 	result, err := p.Run()
 	if err != nil {
