@@ -206,14 +206,14 @@ func (m Model[I]) applyFilter() Model[I] {
 
 func (m Model[I]) cursorUp() Model[I] {
 	maxIndex := max(len(m.filtered)-1, 0)
-	m.cursor = clamp(m.cursor-1, 0, maxIndex)
+	m.cursor = Clamp(m.cursor-1, 0, maxIndex)
 
 	return m
 }
 
 func (m Model[I]) cursorDown() Model[I] {
 	maxIndex := max(len(m.filtered)-1, 0)
-	m.cursor = clamp(m.cursor+1, 0, maxIndex)
+	m.cursor = Clamp(m.cursor+1, 0, maxIndex)
 
 	return m
 }
@@ -311,7 +311,7 @@ func (m Model[I]) Update(msg tea.Msg) (Model[I], tea.Cmd) {
 	return m, m.hoverMsg()
 }
 
-func clamp(i int, min int, max int) int {
+func Clamp(i int, min int, max int) int {
 	if i > max {
 		return max
 	}

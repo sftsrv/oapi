@@ -9,6 +9,7 @@ import (
 	"charm.land/glamour/v2"
 	lg "charm.land/lipgloss/v2"
 	"github.com/sftsrv/oapi/internal/openapi"
+	"github.com/sftsrv/oapi/internal/picker"
 	"github.com/sftsrv/oapi/internal/theme"
 	"github.com/sftsrv/oapi/internal/tree"
 )
@@ -21,6 +22,7 @@ type Model struct {
 	height   int
 	renderer *glamour.TermRenderer
 	viewport viewport.Model
+	tabIndex int
 }
 
 type PreviewResultMsg struct {
@@ -37,8 +39,9 @@ type ResizeMsg struct {
 	Adjust int
 }
 
+var hasDarkBG = lg.HasDarkBackground(os.Stdin, os.Stdout)
+
 func newRenderer(width int) *glamour.TermRenderer {
-	hasDarkBG := lg.HasDarkBackground(os.Stdin, os.Stdout)
 
 	theme := "light"
 	if hasDarkBG {
@@ -61,6 +64,7 @@ func New(spec *openapi.OpenAPISpec) Model {
 
 func (m Model) SetPath(path string) (Model, tea.Cmd) {
 	m.path = path
+	m.tabIndex = 0
 	return m, m.preview()
 }
 
@@ -97,6 +101,32 @@ func (m Model) Height(height int) Model {
 	return m
 }
 
+func (m Model) NextTab() (Model, tea.Cmd) {
+	p := m.spec.Paths[m.path]
+	m.tabIndex++
+
+	if m.tabIndex >= len(p) {
+		m.tabIndex = 0
+	}
+	m.tabIndex = picker.Clamp(m.tabIndex, 0, len(p)-1)
+
+	return m, m.preview()
+}
+
+func (m Model) PreviousTab() (Model, tea.Cmd) {
+	p := m.spec.Paths[m.path]
+
+	m.tabIndex--
+
+	if m.tabIndex < 0 {
+		m.tabIndex = len(p) - 1
+	}
+
+	m.tabIndex = picker.Clamp(m.tabIndex, 0, len(p)-1)
+
+	return m, m.preview()
+}
+
 func (s Model) preview() tea.Cmd {
 	return func() tea.Msg {
 		md := ""
@@ -116,50 +146,58 @@ func (s Model) preview() tea.Cmd {
 			md += "\n\n"
 
 			methods := tree.SortedKeys(p)
+			methodIndex := picker.Clamp(s.tabIndex, 0, len(methods)-1)
+			m := methods[methodIndex]
+			method := p[m]
 
-			for _, m := range methods {
-				method := p[m]
-				md += "## " + strings.ToUpper(m)
-				md += "\n\n"
-				md += "> " + method.Summary
-				md += "\n\n"
-
-				if len(method.Parameters) == 0 {
-					md += "### No Parameters"
-					md += "\n\n"
+			for i, m := range methods {
+				if i == methodIndex {
+					md += "`" + strings.ToUpper(m) + "`"
 				} else {
-					md += "### Parameters"
+					md += "&nbsp;" + strings.ToUpper(m) + "&nbsp;"
+
+				}
+				md += "  "
+			}
+
+			md += "\n\n"
+			md += "> " + method.Summary
+			md += "\n\n"
+
+			if len(method.Parameters) == 0 {
+				md += "### No Parameters"
+				md += "\n\n"
+			} else {
+				md += "### Parameters"
+				md += "\n\n"
+				for _, p := range method.Parameters {
+					md += "#### " + p.Name
+
+					t := p.Schema.Type
+
+					if p.Schema.Ref != "" {
+						t += "(" + p.Schema.Ref + ")"
+					}
+
+					md += " - " + t
+					if p.Required {
+						md += "(required)"
+					}
+
 					md += "\n\n"
-					for _, p := range method.Parameters {
-						md += "#### " + p.Name
+					md += p.Description
+					md += "\n\n"
 
-						t := p.Schema.Type
+					if len(p.Schema.Required) > 0 {
+						md += "- required: "
+						md += "\n"
 
-						if p.Schema.Ref != "" {
-							t += "(" + p.Schema.Ref + ")"
-						}
-
-						md += " - " + t
-						if p.Required {
-							md += "(required)"
-						}
-
-						md += "\n\n"
-						md += p.Description
-						md += "\n\n"
-
-						if len(p.Schema.Required) > 0 {
-							md += "- required: "
+						for _, r := range p.Schema.Required {
+							md += "  - " + r
 							md += "\n"
-
-							for _, r := range p.Schema.Required {
-								md += "  - " + r
-								md += "\n"
-							}
 						}
 					}
 				}
-
 			}
 
 		}
@@ -180,7 +218,7 @@ func (m Model) View() string {
 			Width(m.width).
 			PaddingLeft(1).
 			PaddingRight(1).
-			Background(theme.ColorSecondary).
+			Background(theme.ColorPrimary).
 			Render(m.path),
 		m.viewport.View(),
 	)

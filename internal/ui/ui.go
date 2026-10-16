@@ -138,6 +138,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.preview = preview
 
 			return m, tea.Batch(pathPickerCmd, previewCmd)
+
+		case "tab":
+			m.preview, cmd = m.preview.NextTab()
+			return m, cmd
+
+		case "shift+tab":
+			m.preview, cmd = m.preview.PreviousTab()
+			return m, cmd
 		}
 
 	case tea.MouseMsg:
@@ -155,7 +163,7 @@ func helpView(m Model) string {
 		return lg.JoinHorizontal(
 			lg.Top,
 			theme.Secondary.MarginLeft(2).Render(icon),
-			theme.Faded.MarginRight(2).Render(" ", title),
+			theme.Faded.MarginRight(0).Render(" ", title),
 		)
 	}
 
@@ -166,6 +174,7 @@ func helpView(m Model) string {
 		help += item("→", "expand")
 		help += item("←", "collapse")
 		help += item("ctrk+c", "quit")
+		help += item("tab/shift+tab", "tabs")
 	} else {
 		help += item("/", "search")
 		help += item("↓↑/jk", "navigate")
@@ -173,7 +182,7 @@ func helpView(m Model) string {
 		help += item("←/h", "collapse")
 		help += item("]/[", "expand/collapse all")
 		help += item("}/{", "resize")
-		help += item("ctrk+c/q", "quit")
+		help += item("tab/shift+tab", "tabs")
 	}
 
 	return lg.NewStyle().Render(help)
