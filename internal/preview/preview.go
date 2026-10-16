@@ -123,6 +123,43 @@ func (s Model) preview() tea.Cmd {
 				md += "\n\n"
 				md += "> " + method.Summary
 				md += "\n\n"
+
+				if len(method.Parameters) == 0 {
+					md += "### No Parameters"
+					md += "\n\n"
+				} else {
+					md += "### Parameters"
+					md += "\n\n"
+					for _, p := range method.Parameters {
+						md += "#### " + p.Name
+
+						t := p.Schema.Type
+
+						if p.Schema.Ref != "" {
+							t += "(" + p.Schema.Ref + ")"
+						}
+
+						md += " - " + t
+						if p.Required {
+							md += "(required)"
+						}
+
+						md += "\n\n"
+						md += p.Description
+						md += "\n\n"
+
+						if len(p.Schema.Required) > 0 {
+							md += "- required: "
+							md += "\n"
+
+							for _, r := range p.Schema.Required {
+								md += "  - " + r
+								md += "\n"
+							}
+						}
+					}
+				}
+
 			}
 
 		}
