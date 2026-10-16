@@ -25,7 +25,13 @@ type Path struct {
 	OperationId string              `json:"operationId,omitempty"`
 	Tags        []string            `json:"tags,omitempty"`
 	Parameters  []Parameter         `json:"parameters,omitempty"`
+	RequestBody RequestBody         `json:"requestBody"`
 	Responses   map[string]Response `json:"responses,omitempty"`
+}
+
+type RequestBody struct {
+	Description string             `json:"description,omitempty"`
+	Content     map[string]Content `json:"content,omitempty"`
 }
 
 type Parameter struct {
@@ -47,7 +53,7 @@ type Content struct {
 type Schema struct {
 	Type       string            `json:"type,omitempty"`
 	Format     string            `json:"format,omitempty"`
-	Ref        string            `json:"ref,omitempty"`
+	Ref        string            `json:"$ref,omitempty"`
 	Required   []string          `json:"required,omitempty"`
 	MaxItems   int               `json:"maxItems,omitempty"`
 	Properties map[string]Schema `json:"properties,omitempty"`

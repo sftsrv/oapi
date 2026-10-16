@@ -1,6 +1,7 @@
 package preview
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 
@@ -164,14 +165,29 @@ func (s Model) preview() tea.Cmd {
 			md += "> " + method.Summary
 			md += "\n\n"
 
-			if len(method.Parameters) == 0 {
-				md += "### No Parameters"
+			if len(method.RequestBody.Content) > 0 {
+				md += "## Body"
 				md += "\n\n"
-			} else {
-				md += "### Parameters"
+
+				content := method.RequestBody.Content
+				keys := tree.SortedKeys(content)
+
+				for _, key := range keys {
+					md += "### " + key
+					md += "\n\n"
+
+					json, _ := json.MarshalIndent(content[key], "", "  ")
+					md += "```json\n\n" + string(json) + "\n\n```"
+					md += "\n\n"
+				}
+
+			}
+
+			if len(method.Parameters) > 0 {
+				md += "## Parameters"
 				md += "\n\n"
 				for _, p := range method.Parameters {
-					md += "#### " + p.Name
+					md += "### " + p.Name
 
 					t := p.Schema.Type
 
