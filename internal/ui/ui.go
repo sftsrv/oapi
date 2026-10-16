@@ -180,11 +180,16 @@ func helpView(m Model) string {
 }
 
 func (m Model) View() tea.View {
-	return tea.NewView(lg.JoinVertical(
+	v := tea.NewView(lg.JoinVertical(
 		lg.Left,
 		lg.JoinHorizontal(lg.Top, m.pathPicker.View(), m.preview.View()),
 		helpView(m),
 	))
+
+	v.MouseMode = tea.MouseModeCellMotion
+	v.AltScreen = true
+
+	return v
 }
 
 func initialModel(spec *openapi.OpenAPISpec, f *tree.Tree) Model {
@@ -205,11 +210,7 @@ func endpointTree(spec *openapi.OpenAPISpec) *tree.Tree {
 	paths := maps.Keys(spec.Paths)
 
 	for path := range paths {
-		methods := maps.Keys(spec.Paths[path])
-		for method := range methods {
-			endpoint := fmt.Sprintf("%s/%s", path, method)
-			endpoints = append(endpoints, endpoint)
-		}
+		endpoints = append(endpoints, path)
 	}
 
 	return tree.PathsToTree(endpoints)

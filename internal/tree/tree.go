@@ -168,7 +168,7 @@ func PathsToTree(paths []string) *Tree {
 	return partsToTreeRec(Parts{}, parts, 0)
 }
 
-func sortedKeys[T any](items map[string]T) []string {
+func SortedKeys[T any](items map[string]T) []string {
 	keys := []string{}
 
 	for key := range items {
@@ -181,7 +181,7 @@ func sortedKeys[T any](items map[string]T) []string {
 }
 
 func toItemsRec(tree *Tree, level int) []*Item {
-	roots := sortedKeys(tree.Children)
+	roots := SortedKeys(tree.Children)
 
 	lines := []*Item{}
 	for _, root := range roots {

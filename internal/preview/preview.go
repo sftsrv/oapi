@@ -10,6 +10,7 @@ import (
 	lg "charm.land/lipgloss/v2"
 	"github.com/sftsrv/oapi/internal/openapi"
 	"github.com/sftsrv/oapi/internal/theme"
+	"github.com/sftsrv/oapi/internal/tree"
 )
 
 type Model struct {
@@ -105,25 +106,25 @@ func (s Model) preview() tea.Cmd {
 			md += "\n\n"
 			md += "> version: " + s.spec.Info.Version
 		} else {
-			parts := strings.Split(s.path, "/")
-			pathParts := parts[:len(parts)-1]
-			method := parts[len(parts)-1]
-
-			path := strings.Join(pathParts, "/")
-			p, ok := s.spec.Paths[path]
+			p, ok := s.spec.Paths[s.path]
 
 			if !ok {
 				return nil
 			}
 
-			ep, ok := p[method]
-			if !ok {
-				return nil
-			}
-
-			md += "# " + strings.ToUpper(method) + ":" + path
+			md += "# " + s.path
 			md += "\n\n"
-			md += "> " + ep.Summary
+
+			methods := tree.SortedKeys(p)
+
+			for _, m := range methods {
+				method := p[m]
+				md += "## " + strings.ToUpper(m)
+				md += "\n\n"
+				md += "> " + method.Summary
+				md += "\n\n"
+			}
+
 		}
 
 		rendered, err := s.renderer.Render(md)
@@ -170,6 +171,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			// quickly, though asynchronously, which is why we wait for them
 			// here.
 			m.viewport = viewport.New(viewport.WithHeight(m.height-1), viewport.WithWidth(m.width))
+			m.viewport.MouseWheelEnabled = true
+
 			m.viewport.YPosition = 0
 			m.viewport.SetContent("")
 			m.ready = true
