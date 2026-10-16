@@ -82,6 +82,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.preview = m.preview.SetContent(msg)
 		return m, nil
 
+	case preview.UpdateRendererMsg:
+		m.preview, cmd = m.preview.RendererUpdated(msg)
+		return m, cmd
+
 	case tea.KeyMsg:
 		str := msg.String()
 

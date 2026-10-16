@@ -30,6 +30,8 @@ type PreviewResultMsg struct {
 
 type PreviewReadyMsg struct{}
 
+type UpdateRendererMsg struct{ renderer *glamour.TermRenderer }
+
 type ResizeMsg struct {
 	Adjust int
 }
@@ -58,10 +60,12 @@ func New(spec *openapi.OpenAPISpec) Model {
 
 func (m Model) SetPath(path string) (Model, tea.Cmd) {
 	m.path = path
+	return m, m.preview()
+}
 
-	cmd := m.preview()
-
-	return m, cmd
+func (m Model) RendererUpdated(msg UpdateRendererMsg) (Model, tea.Cmd) {
+	m.renderer = msg.renderer
+	return m, m.preview()
 }
 
 func (m Model) SetContent(preview PreviewResultMsg) Model {
@@ -145,17 +149,18 @@ func (m Model) View() string {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 
 	case ResizeMsg:
 		m.width += msg.Adjust
 		m.viewport.SetWidth(m.width)
-		m.renderer = newRenderer(m.width)
+		cmds = append(cmds, func() tea.Msg {
+			return UpdateRendererMsg{
+				renderer: newRenderer(m.width),
+			}
+		})
 
 	case tea.WindowSizeMsg:
 		if !m.ready {
@@ -173,13 +178,25 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			cmds = append(cmds, readyCmd)
+			cmds = append(cmds, func() tea.Msg {
+				return UpdateRendererMsg{
+					renderer: newRenderer(m.width),
+				}
+			})
+
 		} else {
 			m.viewport.SetWidth(m.width)
 			m.viewport.SetHeight(m.height)
+			cmds = append(cmds, func() tea.Msg {
+				return UpdateRendererMsg{
+					renderer: newRenderer(m.width),
+				}
+			})
 		}
 	}
 
 	// Handle keyboard and mouse events in the viewport
+	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
