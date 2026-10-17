@@ -317,7 +317,9 @@ func (s Model) preview() tea.Cmd {
 			}
 
 			md += "\n\n"
-			md += "> " + method.Summary
+			md += "# " + method.Summary
+			md += "\n\n"
+			md += "> " + method.Description
 			md += "\n\n"
 
 			if (focus.showAll() || focus.parameters) && len(method.Parameters) > 0 {

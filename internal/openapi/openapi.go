@@ -31,6 +31,7 @@ type Paths = map[string]Path
 
 type Path struct {
 	Summary     string              `json:"summary,omitempty"`
+	Description string              `json:"description,omitempty"`
 	OperationId string              `json:"operationId,omitempty"`
 	Tags        []string            `json:"tags,omitempty"`
 	Parameters  []Parameter         `json:"parameters,omitempty"`
