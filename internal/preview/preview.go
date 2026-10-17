@@ -216,41 +216,10 @@ func (s Model) preview() tea.Cmd {
 		focus := s.focus
 		md := ""
 
-		if focus.parameters {
-			md += "`PARAMS`"
-		} else {
-			md += "PARAMS"
-		}
-		md += " "
+		p, isPath := s.spec.Paths[s.path]
+		schema, isSchema := s.spec.Components.Schemas[getSchemaLocalNameFromRef(s.path)]
 
-		if focus.body {
-			md += "`BODY`"
-		} else {
-			md += "BODY"
-		}
-		md += " "
-
-		if focus.responses {
-			md += "`RESPONSES`"
-		} else {
-			md += "RESPONSES"
-		}
-		md += " "
-
-		if focus.schemas {
-			md += "`SCHEMAS`"
-		} else {
-			md += "SCHEMAS"
-		}
-		md += " "
-
-		md += "\n\n"
-		md += "-------"
-		md += "\n\n"
-
-		p, ok := s.spec.Paths[s.path]
-
-		if !ok {
+		if !isPath && !isSchema {
 			if s.path != "" {
 				md += "No endpoint at path `" + s.path + "`"
 				md += "\n\n"
@@ -260,7 +229,39 @@ func (s Model) preview() tea.Cmd {
 			md += "\n\n"
 			md += "> version: " + s.spec.Info.Version
 
-		} else {
+		} else if isPath {
+			if focus.parameters {
+				md += "`PARAMS`"
+			} else {
+				md += "PARAMS"
+			}
+			md += " "
+
+			if focus.body {
+				md += "`BODY`"
+			} else {
+				md += "BODY"
+			}
+			md += " "
+
+			if focus.responses {
+				md += "`RESPONSES`"
+			} else {
+				md += "RESPONSES"
+			}
+			md += " "
+
+			if focus.schemas {
+				md += "`SCHEMAS`"
+			} else {
+				md += "SCHEMAS"
+			}
+			md += " "
+
+			md += "\n\n"
+			md += "-------"
+			md += "\n\n"
+
 			md += "# " + s.path
 			md += "\n\n"
 
@@ -364,6 +365,11 @@ func (s Model) preview() tea.Cmd {
 				}
 			}
 
+		} else if isSchema {
+			md += "# " + s.path
+			md += "\n\n"
+			md += schemaBlock(schema)
+			md += "\n\n"
 		}
 
 		rendered, err := s.renderer.Render(md)
@@ -375,9 +381,12 @@ func (s Model) preview() tea.Cmd {
 	}
 }
 
+func getSchemaLocalNameFromRef(ref string) string {
+	return strings.TrimPrefix(ref, openapi.SCHEMA_PREFIX)
+}
+
 func getSchemaLocalName(schema openapi.Schema) string {
-	name := strings.TrimPrefix(schema.Ref, "#/components/schemas/")
-	return name
+	return getSchemaLocalNameFromRef(schema.Ref)
 }
 
 func getSchemaNames(schema openapi.Schema) []string {

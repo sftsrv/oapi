@@ -8,6 +8,8 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+const SCHEMA_PREFIX = "#/components/schemas/"
+
 type OpenAPISpec struct {
 	Info       Info             `json:"info"`
 	Paths      map[string]Paths `json:"paths,omitempty"`

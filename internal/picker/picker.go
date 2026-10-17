@@ -270,11 +270,8 @@ func (m Model[I]) Update(msg tea.Msg) (Model[I], tea.Cmd) {
 			case "down":
 				m = m.cursorDown()
 
-			case "esc":
+			case "esc", "enter":
 				m.searching = false
-
-			case "enter":
-				return m, m.selectedMsg()
 
 			case "backspace":
 				if m.search != "" {
@@ -296,11 +293,10 @@ func (m Model[I]) Update(msg tea.Msg) (Model[I], tea.Cmd) {
 			case "down", "j":
 				m = m.cursorDown()
 
-			case " ", "enter":
-				return m, m.selectedMsg()
-
 			case "esc":
 				m.searching = false
+				m.search = ""
+				m = m.applyFilter()
 
 			case "/":
 				m.searching = true

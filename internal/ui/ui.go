@@ -249,7 +249,7 @@ func initialModel(spec *openapi.OpenAPISpec, f *tree.Tree) Model {
 	}
 }
 
-func endpointTree(spec *openapi.OpenAPISpec) *tree.Tree {
+func uiTree(spec *openapi.OpenAPISpec) *tree.Tree {
 	endpoints := []string{
 		"/",
 	}
@@ -259,11 +259,15 @@ func endpointTree(spec *openapi.OpenAPISpec) *tree.Tree {
 		endpoints = append(endpoints, path)
 	}
 
+	for schema := range spec.Components.Schemas {
+		endpoints = append(endpoints, openapi.SCHEMA_PREFIX+schema)
+	}
+
 	return tree.PathsToTree(endpoints)
 }
 
 func Run(spec *openapi.OpenAPISpec, flat bool) {
-	t := endpointTree(spec)
+	t := uiTree(spec)
 
 	if flat {
 		t.Flatten()
