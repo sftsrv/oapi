@@ -19,6 +19,17 @@ Run the application by giving it the path to an [OpenAPI Spec](https://learn.ope
 oapi path/to/spec.json
 '''
 
+Uses the following key bindings:
+
+- '/' - search
+- '↓↑/jk' - navigate
+- '→/l' - expand
+- '←/h' - collapse
+- ']/[' - expand/collapse all
+- '}/{' - resize
+- 'tab/shift+tab' - tabs
+- 'b/p/r/s/a/n' - toggle sections (body/params/response/schemas/all/none)
+
 `
 
 func main() {
