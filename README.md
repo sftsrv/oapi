@@ -2,6 +2,8 @@
 
 A TUI for previewing OpenAPI Specs
 
+![oapi in action](./images/oapi.gif)
+
 ## Installation
 
 Install using `go get` as follows:
