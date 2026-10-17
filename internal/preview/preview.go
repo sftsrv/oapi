@@ -8,10 +8,10 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/glamour/v2"
+	"charm.land/glamour/v2/styles"
 	lg "charm.land/lipgloss/v2"
 	"github.com/sftsrv/oapi/internal/openapi"
 	"github.com/sftsrv/oapi/internal/picker"
-	"github.com/sftsrv/oapi/internal/theme"
 	"github.com/sftsrv/oapi/internal/tree"
 )
 
@@ -44,9 +44,9 @@ var hasDarkBG = lg.HasDarkBackground(os.Stdin, os.Stdout)
 
 func newRenderer(width int) *glamour.TermRenderer {
 
-	theme := "light"
+	theme := styles.LightStyle
 	if hasDarkBG {
-		theme = "dark"
+		theme = styles.DraculaStyle
 	}
 
 	renderer, _ := glamour.NewTermRenderer(glamour.WithWordWrap(width), glamour.WithStandardStyle(theme))
@@ -155,7 +155,7 @@ func (s Model) preview() tea.Cmd {
 				if i == methodIndex {
 					md += "`" + strings.ToUpper(m) + "`"
 				} else {
-					md += "&nbsp;" + strings.ToUpper(m) + "&nbsp;"
+					md += strings.ToUpper(m)
 
 				}
 				md += "  "
@@ -234,8 +234,8 @@ func (m Model) View() string {
 			Width(m.width).
 			PaddingLeft(1).
 			PaddingRight(1).
-			Background(theme.ColorPrimary).
-			Render(m.path),
+			Bold(true).
+			Render(m.spec.Info.Title+" - "+m.spec.Info.Version),
 		m.viewport.View(),
 	)
 }

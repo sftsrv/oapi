@@ -124,7 +124,7 @@ func (m Model[I]) View() string {
 		theme.
 			Heading.
 			Width(m.width).
-			Background(m.accent).
+			// Background(m.accent).
 			Render(m.title+" "+count),
 		theme.Faded.MarginLeft(1).Render(fallback),
 	)
@@ -133,7 +133,7 @@ func (m Model[I]) View() string {
 		header = lg.JoinVertical(
 			lg.Left,
 			theme.Heading.Width(m.width).
-				Background(m.accent).
+				// Background(m.accent).
 				Render("Search "+count),
 			m.search+"_",
 		)
