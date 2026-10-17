@@ -29,5 +29,5 @@ Uses the following key bindings:
 - `]/[` - expand/collapse all
 - `}/{` - resize
 - `tab/shift+tab` - tabs
-- `b/p/r/s/a/n` - toggle sections (body/params/response/schemas/all/none)
+- `b/p/c/r/s/a/n` - toggle sections (body/params/codes/responses/schemas/all/none)
 

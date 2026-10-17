@@ -32,17 +32,18 @@ type Model struct {
 type Focus struct {
 	body       bool
 	parameters bool
+	codes      bool
 	responses  bool
 	schemas    bool
 }
 
 func (f Focus) showAll() bool {
-	hasAny := f.body || f.parameters || f.responses || f.schemas
+	hasAny := f.body || f.parameters || f.responses || f.schemas || f.codes
 	if !hasAny {
 		return true
 	}
 
-	return f.body && f.parameters && f.responses && f.schemas
+	return f.body && f.parameters && f.responses && f.schemas && f.codes
 }
 
 func (m Model) EnableAll() (Model, tea.Cmd) {
@@ -51,6 +52,7 @@ func (m Model) EnableAll() (Model, tea.Cmd) {
 	f.body = true
 	f.parameters = true
 	f.responses = true
+	f.codes = true
 	f.schemas = true
 
 	return m, m.preview()
@@ -62,6 +64,7 @@ func (m Model) DisableAll() (Model, tea.Cmd) {
 	f.body = false
 	f.parameters = false
 	f.responses = false
+	f.codes = false
 	f.schemas = false
 
 	return m, m.preview()
@@ -79,6 +82,11 @@ func (m Model) ToggleParameters() (Model, tea.Cmd) {
 
 func (m Model) ToggleResponses() (Model, tea.Cmd) {
 	m.focus.responses = !m.focus.responses
+	return m, m.preview()
+}
+
+func (m Model) ToggleCodes() (Model, tea.Cmd) {
+	m.focus.codes = !m.focus.codes
 	return m, m.preview()
 }
 
@@ -195,12 +203,12 @@ func schemaBlock(schema openapi.Schema) string {
 	return "```json\n\n" + string(json) + "\n\n```"
 }
 
-func printContent(contents map[string]openapi.Content) string {
+func printContent(titlePrefix string, contents map[string]openapi.Content) string {
 	md := ""
 	keys := tree.SortedKeys(contents)
 
 	for _, key := range keys {
-		md += "### " + key
+		md += titlePrefix + " " + key
 		md += "\n\n"
 
 		md += schemaBlock(contents[key].Schema)
@@ -225,7 +233,7 @@ func (s Model) preview() tea.Cmd {
 				md += "\n\n"
 			}
 
-			md += "# " + s.spec.Info.Title
+			md += " " + s.spec.Info.Title
 			md += "\n\n"
 			md += "> version: " + s.spec.Info.Version
 
@@ -251,6 +259,13 @@ func (s Model) preview() tea.Cmd {
 			}
 			md += " "
 
+			if focus.codes {
+				md += "`CODES`"
+			} else {
+				md += "CODES"
+			}
+			md += " "
+
 			if focus.schemas {
 				md += "`SCHEMAS`"
 			} else {
@@ -262,7 +277,6 @@ func (s Model) preview() tea.Cmd {
 			md += "-------"
 			md += "\n\n"
 
-			md += "# " + s.path
 			md += "\n\n"
 
 			methods := tree.SortedKeys(p)
@@ -330,7 +344,21 @@ func (s Model) preview() tea.Cmd {
 
 				content := method.RequestBody.Content
 
-				md += printContent(content)
+				md += printContent("###", content)
+			}
+
+			if (focus.showAll() || focus.codes) && len(method.Responses) > 0 {
+				md += "## Codes"
+				md += "\n\n"
+
+				for _, code := range tree.SortedKeys(method.Responses) {
+					res := method.Responses[code]
+					md += "### " + code
+					md += "\n\n"
+
+					md += "> " + res.Description
+					md += "\n\n"
+				}
 			}
 
 			if (focus.showAll() || focus.responses) && len(method.Responses) > 0 {
@@ -342,10 +370,10 @@ func (s Model) preview() tea.Cmd {
 					md += "### " + code
 					md += "\n\n"
 
-					md += res.Description
+					md += "> " + res.Description
 					md += "\n\n"
 
-					md += printContent(res.Content)
+					md += printContent("####", res.Content)
 					md += "\n\n"
 				}
 			}
@@ -358,7 +386,7 @@ func (s Model) preview() tea.Cmd {
 
 				relatedSchemaKeys := tree.SortedKeys(relatedSchemas)
 				for _, s := range relatedSchemaKeys {
-					md += "### " + s
+					md += "## " + s
 					md += "\n\n"
 					md += schemaBlock(relatedSchemas[s])
 					md += "\n\n"
@@ -366,7 +394,7 @@ func (s Model) preview() tea.Cmd {
 			}
 
 		} else if isSchema {
-			md += "# " + s.path
+			md += "# " + getSchemaLocalNameFromRef(s.path)
 			md += "\n\n"
 			md += schemaBlock(schema)
 			md += "\n\n"
@@ -451,7 +479,7 @@ func (m Model) View() string {
 			PaddingLeft(1).
 			PaddingRight(1).
 			Bold(true).
-			Render(" "+m.spec.Info.Title+" - "+m.spec.Info.Version),
+			Render(m.path),
 		m.viewport.View(),
 	)
 }

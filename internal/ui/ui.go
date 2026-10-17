@@ -159,6 +159,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			}
 
+		case "c":
+			if !m.pathPicker.IsSearching() {
+				m.preview, cmd = m.preview.ToggleCodes()
+				return m, cmd
+			}
+
 		case "p":
 			if !m.pathPicker.IsSearching() {
 				m.preview, cmd = m.preview.ToggleParameters()
