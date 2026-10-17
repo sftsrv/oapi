@@ -146,6 +146,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "shift+tab":
 			m.preview, cmd = m.preview.PreviousTab()
 			return m, cmd
+
+		case "b":
+			if !m.pathPicker.IsSearching() {
+				m.preview, cmd = m.preview.ToggleBody()
+				return m, cmd
+			}
+
+		case "r":
+			if !m.pathPicker.IsSearching() {
+				m.preview, cmd = m.preview.ToggleResponses()
+				return m, cmd
+			}
+
+		case "p":
+			if !m.pathPicker.IsSearching() {
+				m.preview, cmd = m.preview.ToggleParameters()
+				return m, cmd
+			}
+
+		case "s":
+			if !m.pathPicker.IsSearching() {
+				m.preview, cmd = m.preview.ToggleSchemas()
+				return m, cmd
+			}
+
+		case "a":
+			if !m.pathPicker.IsSearching() {
+				m.preview, cmd = m.preview.EnableAll()
+				return m, cmd
+			}
+
+		case "n":
+			if !m.pathPicker.IsSearching() {
+				m.preview, cmd = m.preview.DisableAll()
+				return m, cmd
+			}
 		}
 
 	case tea.MouseMsg:
@@ -183,6 +219,7 @@ func helpView(m Model) string {
 		help += item("]/[", "expand/collapse all")
 		help += item("}/{", "resize")
 		help += item("tab/shift+tab", "tabs")
+		help += item("b/p/r/s/a/n", "toggle sections")
 	}
 
 	return lg.NewStyle().Render(help)

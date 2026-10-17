@@ -3,6 +3,7 @@ package preview
 import (
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/viewport"
@@ -24,6 +25,66 @@ type Model struct {
 	renderer *glamour.TermRenderer
 	viewport viewport.Model
 	tabIndex int
+
+	focus *Focus
+}
+
+type Focus struct {
+	body       bool
+	parameters bool
+	responses  bool
+	schemas    bool
+}
+
+func (f Focus) showAll() bool {
+	hasAny := f.body || f.parameters || f.responses || f.schemas
+	if !hasAny {
+		return true
+	}
+
+	return f.body && f.parameters && f.responses && f.schemas
+}
+
+func (m Model) EnableAll() (Model, tea.Cmd) {
+	f := m.focus
+
+	f.body = true
+	f.parameters = true
+	f.responses = true
+	f.schemas = true
+
+	return m, m.preview()
+}
+
+func (m Model) DisableAll() (Model, tea.Cmd) {
+	f := m.focus
+
+	f.body = false
+	f.parameters = false
+	f.responses = false
+	f.schemas = false
+
+	return m, m.preview()
+}
+
+func (m Model) ToggleBody() (Model, tea.Cmd) {
+	m.focus.body = !m.focus.body
+	return m, m.preview()
+}
+
+func (m Model) ToggleParameters() (Model, tea.Cmd) {
+	m.focus.parameters = !m.focus.parameters
+	return m, m.preview()
+}
+
+func (m Model) ToggleResponses() (Model, tea.Cmd) {
+	m.focus.responses = !m.focus.responses
+	return m, m.preview()
+}
+
+func (m Model) ToggleSchemas() (Model, tea.Cmd) {
+	m.focus.schemas = !m.focus.schemas
+	return m, m.preview()
 }
 
 type PreviewResultMsg struct {
@@ -60,6 +121,7 @@ func New(spec *openapi.OpenAPISpec) Model {
 	return Model{
 		renderer: renderer,
 		spec:     spec,
+		focus:    &Focus{},
 	}
 }
 
@@ -128,21 +190,77 @@ func (m Model) PreviousTab() (Model, tea.Cmd) {
 	return m, m.preview()
 }
 
+func schemaBlock(schema openapi.Schema) string {
+	json, _ := json.MarshalIndent(schema, "", "  ")
+	return "```json\n\n" + string(json) + "\n\n```"
+}
+
+func printContent(contents map[string]openapi.Content) string {
+	md := ""
+	keys := tree.SortedKeys(contents)
+
+	for _, key := range keys {
+		md += "### " + key
+		md += "\n\n"
+
+		md += schemaBlock(contents[key].Schema)
+		md += "\n\n"
+	}
+
+	return md
+
+}
+
 func (s Model) preview() tea.Cmd {
 	return func() tea.Msg {
+		focus := s.focus
 		md := ""
 
-		if s.path == "" {
+		if focus.parameters {
+			md += "`PARAMS`"
+		} else {
+			md += "PARAMS"
+		}
+		md += " "
+
+		if focus.body {
+			md += "`BODY`"
+		} else {
+			md += "BODY"
+		}
+		md += " "
+
+		if focus.responses {
+			md += "`RESPONSES`"
+		} else {
+			md += "RESPONSES"
+		}
+		md += " "
+
+		if focus.schemas {
+			md += "`SCHEMAS`"
+		} else {
+			md += "SCHEMAS"
+		}
+		md += " "
+
+		md += "\n\n"
+		md += "-------"
+		md += "\n\n"
+
+		p, ok := s.spec.Paths[s.path]
+
+		if !ok {
+			if s.path != "" {
+				md += "No endpoint at path `" + s.path + "`"
+				md += "\n\n"
+			}
+
 			md += "# " + s.spec.Info.Title
 			md += "\n\n"
 			md += "> version: " + s.spec.Info.Version
+
 		} else {
-			p, ok := s.spec.Paths[s.path]
-
-			if !ok {
-				return nil
-			}
-
 			md += "# " + s.path
 			md += "\n\n"
 
@@ -165,29 +283,16 @@ func (s Model) preview() tea.Cmd {
 			md += "> " + method.Summary
 			md += "\n\n"
 
-			if len(method.RequestBody.Content) > 0 {
-				md += "## Body"
-				md += "\n\n"
-
-				content := method.RequestBody.Content
-				keys := tree.SortedKeys(content)
-
-				for _, key := range keys {
-					md += "### " + key
-					md += "\n\n"
-
-					json, _ := json.MarshalIndent(content[key], "", "  ")
-					md += "```json\n\n" + string(json) + "\n\n```"
-					md += "\n\n"
-				}
-
-			}
-
-			if len(method.Parameters) > 0 {
+			if (focus.showAll() || focus.parameters) && len(method.Parameters) > 0 {
 				md += "## Parameters"
 				md += "\n\n"
+
+				slices.SortFunc(method.Parameters, func(a, b openapi.Parameter) int {
+					return strings.Compare(a.Name, b.Name)
+				})
+
 				for _, p := range method.Parameters {
-					md += "### " + p.Name
+					md += "- " + p.Name
 
 					t := p.Schema.Type
 
@@ -195,13 +300,15 @@ func (s Model) preview() tea.Cmd {
 						t += "(" + p.Schema.Ref + ")"
 					}
 
-					md += " - " + t
 					if p.Required {
-						md += "(required)"
+						t += "(required)"
 					}
+					t = "`" + t + "`"
+					md += " " + t
 
-					md += "\n\n"
-					md += p.Description
+					if p.Description != "" {
+						md += " - " + p.Description
+					}
 					md += "\n\n"
 
 					if len(p.Schema.Required) > 0 {
@@ -216,6 +323,47 @@ func (s Model) preview() tea.Cmd {
 				}
 			}
 
+			if (focus.showAll() || focus.body) && len(method.RequestBody.Content) > 0 {
+				md += "## Body"
+				md += "\n\n"
+
+				content := method.RequestBody.Content
+
+				md += printContent(content)
+			}
+
+			if (focus.showAll() || focus.responses) && len(method.Responses) > 0 {
+				md += "## Responses"
+				md += "\n\n"
+
+				for _, code := range tree.SortedKeys(method.Responses) {
+					res := method.Responses[code]
+					md += "### " + code
+					md += "\n\n"
+
+					md += res.Description
+					md += "\n\n"
+
+					md += printContent(res.Content)
+					md += "\n\n"
+				}
+			}
+
+			relatedSchemas := getRelatedSchemas(s.spec, method)
+
+			if (focus.showAll() || focus.schemas) && len(relatedSchemas) > 0 {
+				md += "## Related Schemas"
+				md += "\n\n"
+
+				relatedSchemaKeys := tree.SortedKeys(relatedSchemas)
+				for _, s := range relatedSchemaKeys {
+					md += "### " + s
+					md += "\n\n"
+					md += schemaBlock(relatedSchemas[s])
+					md += "\n\n"
+				}
+			}
+
 		}
 
 		rendered, err := s.renderer.Render(md)
@@ -227,6 +375,65 @@ func (s Model) preview() tea.Cmd {
 	}
 }
 
+func getSchemaLocalName(schema openapi.Schema) string {
+	name := strings.TrimPrefix(schema.Ref, "#/components/schemas/")
+	return name
+}
+
+func getSchemaNames(schema openapi.Schema) []string {
+	schemas := []string{}
+
+	if schema.Ref != "" {
+		schemas = append(schemas, getSchemaLocalName(schema))
+	}
+
+	if schema.Items != nil && schema.Items.Ref != "" {
+		schemas = append(schemas, getSchemaLocalName(*schema.Items))
+	}
+
+	childKeys := tree.SortedKeys(schema.Properties)
+	for _, key := range childKeys {
+		child := schema.Properties[key]
+		schemas = append(schemas, getSchemaNames(child)...)
+	}
+
+	return schemas
+}
+
+func getRelatedSchemas(openAPISpec *openapi.OpenAPISpec, method openapi.Path) map[string]openapi.Schema {
+	keys := []string{}
+
+	responses := tree.SortedKeys(method.Responses)
+	for _, m := range responses {
+		content := method.Responses[m].Content
+		contents := tree.SortedKeys(content)
+		for _, c := range contents {
+			keys = append(keys, getSchemaNames(content[c].Schema)...)
+		}
+	}
+
+	requests := tree.SortedKeys(method.RequestBody.Content)
+	for _, m := range requests {
+		content := method.Responses[m].Content
+		contents := tree.SortedKeys(content)
+		for _, c := range contents {
+			keys = append(keys, getSchemaNames(content[c].Schema)...)
+		}
+	}
+
+	schemas := map[string]openapi.Schema{}
+
+	slices.Sort(keys)
+	for _, key := range keys {
+		schema, ok := openAPISpec.Components.Schemas[key]
+		if ok {
+			schemas[key] = schema
+		}
+	}
+
+	return schemas
+}
+
 func (m Model) View() string {
 	return lg.JoinVertical(
 		lg.Center,
@@ -235,7 +442,7 @@ func (m Model) View() string {
 			PaddingLeft(1).
 			PaddingRight(1).
 			Bold(true).
-			Render(m.spec.Info.Title+" - "+m.spec.Info.Version),
+			Render(" "+m.spec.Info.Title+" - "+m.spec.Info.Version),
 		m.viewport.View(),
 	)
 }

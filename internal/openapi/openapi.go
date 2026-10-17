@@ -9,14 +9,21 @@ import (
 )
 
 type OpenAPISpec struct {
-	Info  Info             `json:"info"`
-	Paths map[string]Paths `json:"paths,omitempty"`
+	Info       Info             `json:"info"`
+	Paths      map[string]Paths `json:"paths,omitempty"`
+	Components Components       `json:"components"`
 }
 
 type Info struct {
 	Version string `json:"version"`
 	Title   string `json:"title"`
 }
+
+type Components struct {
+	Schemas Schemas `json:"schemas"`
+}
+
+type Schemas = map[string]Schema
 
 type Paths = map[string]Path
 
@@ -51,12 +58,13 @@ type Content struct {
 }
 
 type Schema struct {
-	Type       string            `json:"type,omitempty"`
-	Format     string            `json:"format,omitempty"`
-	Ref        string            `json:"$ref,omitempty"`
-	Required   []string          `json:"required,omitempty"`
-	MaxItems   int               `json:"maxItems,omitempty"`
-	Properties map[string]Schema `json:"properties,omitempty"`
+	Type       string   `json:"type,omitempty"`
+	Format     string   `json:"format,omitempty"`
+	Ref        string   `json:"$ref,omitempty"`
+	Required   []string `json:"required,omitempty"`
+	MaxItems   int      `json:"maxItems,omitempty"`
+	Properties Schemas  `json:"properties,omitempty"`
+	Items      *Schema  `json:"items,omitempty"`
 }
 
 func FromFile(path string) (*OpenAPISpec, error) {
