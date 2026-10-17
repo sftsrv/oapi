@@ -37,13 +37,20 @@ type Focus struct {
 	schemas    bool
 }
 
+func (f Focus) hasAll() bool {
+	return f.body && f.parameters && f.responses && f.schemas && f.codes
+}
+
+func (f Focus) hasAny() bool {
+	return f.body || f.parameters || f.responses || f.schemas || f.codes
+}
+
 func (f Focus) showAll() bool {
-	hasAny := f.body || f.parameters || f.responses || f.schemas || f.codes
-	if !hasAny {
+	if !f.hasAny() {
 		return true
 	}
 
-	return f.body && f.parameters && f.responses && f.schemas && f.codes
+	return f.hasAll()
 }
 
 func (m Model) EnableAll() (Model, tea.Cmd) {
@@ -71,26 +78,41 @@ func (m Model) DisableAll() (Model, tea.Cmd) {
 }
 
 func (m Model) ToggleBody() (Model, tea.Cmd) {
+	if m.focus.hasAll() {
+		m.DisableAll()
+	}
 	m.focus.body = !m.focus.body
 	return m, m.preview()
 }
 
 func (m Model) ToggleParameters() (Model, tea.Cmd) {
+	if m.focus.hasAll() {
+		m.DisableAll()
+	}
 	m.focus.parameters = !m.focus.parameters
 	return m, m.preview()
 }
 
 func (m Model) ToggleResponses() (Model, tea.Cmd) {
+	if m.focus.hasAll() {
+		m.DisableAll()
+	}
 	m.focus.responses = !m.focus.responses
 	return m, m.preview()
 }
 
 func (m Model) ToggleCodes() (Model, tea.Cmd) {
+	if m.focus.hasAll() {
+		m.DisableAll()
+	}
 	m.focus.codes = !m.focus.codes
 	return m, m.preview()
 }
 
 func (m Model) ToggleSchemas() (Model, tea.Cmd) {
+	if m.focus.hasAll() {
+		m.DisableAll()
+	}
 	m.focus.schemas = !m.focus.schemas
 	return m, m.preview()
 }
