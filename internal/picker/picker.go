@@ -196,7 +196,7 @@ func (m Model[I]) applyFilter() Model[I] {
 
 	m.filtered = []I{}
 	for _, item := range m.items {
-		if strings.Contains(item.Search(), m.search) {
+		if strings.Contains(strings.ToLower(item.Search()), strings.ToLower(m.search)) {
 			m.filtered = append(m.filtered, item)
 		}
 	}
