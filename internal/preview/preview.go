@@ -27,22 +27,29 @@ type Model struct {
 	tabIndex int
 
 	focus *Focus
+	mimes *MimeTypes
 }
 
 type Focus struct {
-	body       bool
-	parameters bool
-	codes      bool
-	responses  bool
-	schemas    bool
+	Body       bool
+	Parameters bool
+	Codes      bool
+	Responses  bool
+	Schemas    bool
+}
+
+type MimeTypes struct {
+	Json bool
+	Xml  bool
+	Text bool
 }
 
 func (f Focus) hasAll() bool {
-	return f.body && f.parameters && f.responses && f.schemas && f.codes
+	return f.Body && f.Parameters && f.Responses && f.Schemas && f.Codes
 }
 
 func (f Focus) hasAny() bool {
-	return f.body || f.parameters || f.responses || f.schemas || f.codes
+	return f.Body || f.Parameters || f.Responses || f.Schemas || f.Codes
 }
 
 func (f Focus) showAll() bool {
@@ -53,67 +60,74 @@ func (f Focus) showAll() bool {
 	return f.hasAll()
 }
 
-func (m Model) EnableAll() (Model, tea.Cmd) {
-	f := m.focus
+func (f MimeTypes) hasAll() bool {
+	return f.Json && f.Xml && f.Text
+}
 
-	f.body = true
-	f.parameters = true
-	f.responses = true
-	f.codes = true
-	f.schemas = true
+func (f MimeTypes) hasAny() bool {
+	return f.Json || f.Xml || f.Text
+}
 
-	return m, m.preview()
+func (f MimeTypes) showAll() bool {
+	if !f.hasAny() {
+		return true
+	}
+
+	return f.hasAll()
 }
 
 func (m Model) DisableAll() (Model, tea.Cmd) {
-	f := m.focus
 
-	f.body = false
-	f.parameters = false
-	f.responses = false
-	f.codes = false
-	f.schemas = false
+	m.focus.Body = false
+	m.focus.Parameters = false
+	m.focus.Responses = false
+	m.focus.Codes = false
+	m.focus.Schemas = false
+
+	m.mimes.Json = false
+	m.mimes.Xml = false
+	m.mimes.Text = false
 
 	return m, m.preview()
 }
 
 func (m Model) ToggleBody() (Model, tea.Cmd) {
-	if m.focus.hasAll() {
-		m.DisableAll()
-	}
-	m.focus.body = !m.focus.body
+	m.focus.Body = !m.focus.Body
 	return m, m.preview()
 }
 
 func (m Model) ToggleParameters() (Model, tea.Cmd) {
-	if m.focus.hasAll() {
-		m.DisableAll()
-	}
-	m.focus.parameters = !m.focus.parameters
+	m.focus.Parameters = !m.focus.Parameters
 	return m, m.preview()
 }
 
 func (m Model) ToggleResponses() (Model, tea.Cmd) {
-	if m.focus.hasAll() {
-		m.DisableAll()
-	}
-	m.focus.responses = !m.focus.responses
+	m.focus.Responses = !m.focus.Responses
 	return m, m.preview()
 }
 
 func (m Model) ToggleCodes() (Model, tea.Cmd) {
-	if m.focus.hasAll() {
-		m.DisableAll()
-	}
-	m.focus.codes = !m.focus.codes
+	m.focus.Codes = !m.focus.Codes
 	return m, m.preview()
 }
 
 func (m Model) ToggleSchemas() (Model, tea.Cmd) {
-	if m.focus.hasAll() {
-		m.DisableAll()
-	}
-	m.focus.schemas = !m.focus.schemas
+	m.focus.Schemas = !m.focus.Schemas
+	return m, m.preview()
+}
+
+func (m Model) ToggleJson() (Model, tea.Cmd) {
+	m.mimes.Json = !m.mimes.Json
+	return m, m.preview()
+}
+
+func (m Model) ToggleXml() (Model, tea.Cmd) {
+	m.mimes.Xml = !m.mimes.Xml
+	return m, m.preview()
+}
+
+func (m Model) ToggleText() (Model, tea.Cmd) {
+	m.mimes.Text = !m.mimes.Text
 	return m, m.preview()
 }
 
@@ -145,13 +159,14 @@ func newRenderer(width int) *glamour.TermRenderer {
 	return renderer
 }
 
-func New(spec *openapi.OpenAPISpec) Model {
+func New(spec *openapi.OpenAPISpec, focus *Focus, mime *MimeTypes) Model {
 	renderer := newRenderer(40)
 
 	return Model{
 		renderer: renderer,
 		spec:     spec,
-		focus:    &Focus{},
+		focus:    focus,
+		mimes:    mime,
 	}
 }
 
@@ -225,25 +240,54 @@ func schemaBlock(schema openapi.Schema) string {
 	return "```json\n\n" + string(json) + "\n\n```"
 }
 
-func printContent(titlePrefix string, contents map[string]openapi.Content) string {
+func (c MimeTypes) printContent(titlePrefix string, contents map[string]openapi.Content) string {
 	md := ""
-	keys := tree.SortedKeys(contents)
 
-	for _, key := range keys {
-		md += titlePrefix + " " + key
+	if c.showAll() {
+		keys := tree.SortedKeys(contents)
+
+		for _, key := range keys {
+			md += titlePrefix + " " + key
+			md += "\n\n"
+
+			md += schemaBlock(contents[key].Schema)
+			md += "\n\n"
+		}
+
+		return md
+	}
+
+	printMime := func(t string) {
+		data, hasT := contents[t]
+		if !hasT {
+			return
+		}
+
+		md += titlePrefix + " " + t
 		md += "\n\n"
 
-		md += schemaBlock(contents[key].Schema)
+		md += schemaBlock(data.Schema)
 		md += "\n\n"
+
+	}
+
+	if c.Json {
+		printMime("application/json")
+	}
+	if c.Xml {
+		printMime("application/xml")
+	}
+	if c.Text {
+		printMime("application/text")
 	}
 
 	return md
-
 }
 
 func (s Model) preview() tea.Cmd {
 	return func() tea.Msg {
 		focus := s.focus
+		mimes := s.mimes
 		md := ""
 
 		p, isPath := s.spec.Paths[s.path]
@@ -260,38 +304,59 @@ func (s Model) preview() tea.Cmd {
 			md += "> version: " + s.spec.Info.Version
 
 		} else if isPath {
-			if focus.parameters {
+			if focus.Parameters {
 				md += "`PARAMS`"
 			} else {
 				md += "PARAMS"
 			}
 			md += " "
 
-			if focus.body {
+			if focus.Body {
 				md += "`BODY`"
 			} else {
 				md += "BODY"
 			}
 			md += " "
 
-			if focus.responses {
+			if focus.Responses {
 				md += "`RESPONSES`"
 			} else {
 				md += "RESPONSES"
 			}
 			md += " "
 
-			if focus.codes {
+			if focus.Codes {
 				md += "`CODES`"
 			} else {
 				md += "CODES"
 			}
 			md += " "
 
-			if focus.schemas {
+			if focus.Schemas {
 				md += "`SCHEMAS`"
 			} else {
 				md += "SCHEMAS"
+			}
+			md += " "
+
+			if mimes.Json {
+				md += "`JSON`"
+			} else {
+				md += "JSON"
+			}
+			md += " "
+
+			if mimes.Xml {
+				md += "`XML`"
+			} else {
+				md += "XML"
+			}
+			md += " "
+
+			if mimes.Text {
+				md += "`TEXT`"
+			} else {
+				md += "TEXT"
 			}
 			md += " "
 
@@ -322,7 +387,7 @@ func (s Model) preview() tea.Cmd {
 			md += "> " + method.Description
 			md += "\n\n"
 
-			if (focus.showAll() || focus.parameters) && len(method.Parameters) > 0 {
+			if (focus.showAll() || focus.Parameters) && len(method.Parameters) > 0 {
 				md += "## Parameters"
 				md += "\n\n"
 
@@ -362,16 +427,16 @@ func (s Model) preview() tea.Cmd {
 				}
 			}
 
-			if (focus.showAll() || focus.body) && len(method.RequestBody.Content) > 0 {
+			if (focus.showAll() || focus.Body) && len(method.RequestBody.Content) > 0 {
 				md += "## Body"
 				md += "\n\n"
 
 				content := method.RequestBody.Content
 
-				md += printContent("###", content)
+				md += mimes.printContent("###", content)
 			}
 
-			if (focus.showAll() || focus.codes) && len(method.Responses) > 0 {
+			if (focus.showAll() || focus.Codes) && len(method.Responses) > 0 {
 				md += "## Codes"
 				md += "\n\n"
 
@@ -385,7 +450,7 @@ func (s Model) preview() tea.Cmd {
 				}
 			}
 
-			if (focus.showAll() || focus.responses) && len(method.Responses) > 0 {
+			if (focus.showAll() || focus.Responses) && len(method.Responses) > 0 {
 				md += "## Responses"
 				md += "\n\n"
 
@@ -397,14 +462,14 @@ func (s Model) preview() tea.Cmd {
 					md += "> " + res.Description
 					md += "\n\n"
 
-					md += printContent("####", res.Content)
+					md += mimes.printContent("####", res.Content)
 					md += "\n\n"
 				}
 			}
 
 			relatedSchemas := getRelatedSchemas(s.spec, method)
 
-			if (focus.showAll() || focus.schemas) && len(relatedSchemas) > 0 {
+			if (focus.showAll() || focus.Schemas) && len(relatedSchemas) > 0 {
 				md += "## Related Schemas"
 				md += "\n\n"
 

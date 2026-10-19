@@ -22,9 +22,9 @@ type Item struct {
 	tree  *Tree
 }
 
-const ICON_FILE = ""
+const ICON_FILE = "/"
 const ICON_FOLDER_CLOSED = "\uf141 "
-const ICON_FOLDER_OPEN = "\ue216"
+const ICON_FOLDER_OPEN = "/"
 const INDENT = "  "
 const SEP = "/"
 

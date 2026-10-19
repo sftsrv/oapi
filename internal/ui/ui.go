@@ -179,13 +179,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "a":
 			if !m.pathPicker.IsSearching() {
-				m.preview, cmd = m.preview.EnableAll()
+				m.preview, cmd = m.preview.DisableAll()
 				return m, cmd
 			}
 
-		case "n":
+		case "J":
 			if !m.pathPicker.IsSearching() {
-				m.preview, cmd = m.preview.DisableAll()
+				m.preview, cmd = m.preview.ToggleJson()
+				return m, cmd
+			}
+
+		case "X":
+			if !m.pathPicker.IsSearching() {
+				m.preview, cmd = m.preview.ToggleXml()
+				return m, cmd
+			}
+
+		case "T":
+			if !m.pathPicker.IsSearching() {
+				m.preview, cmd = m.preview.ToggleText()
 				return m, cmd
 			}
 		}
@@ -225,7 +237,7 @@ func helpView(m Model) string {
 		help += item("]/[", "expand/collapse all")
 		help += item("}/{", "resize")
 		help += item("tab/shift+tab", "tabs")
-		help += item("b/p/r/s/a/n", "toggle sections")
+		help += item("b/p/r/s/J/X/T/a", "toggle sections")
 	}
 
 	return lg.NewStyle().Render(help)
@@ -244,14 +256,14 @@ func (m Model) View() tea.View {
 	return v
 }
 
-func initialModel(spec *openapi.OpenAPISpec, f *tree.Tree) Model {
+func initialModel(spec *openapi.OpenAPISpec, f *tree.Tree, focus preview.Focus, mime preview.MimeTypes) Model {
 	items := tree.ToItems(f)
 
 	return Model{
 		spec:       spec,
 		tree:       f,
 		pathPicker: picker.New[*tree.Item]().Title("Items").Accent(theme.ColorPrimary).Items(items),
-		preview:    preview.New(spec),
+		preview:    preview.New(spec, &focus, &mime),
 	}
 }
 
@@ -272,14 +284,14 @@ func uiTree(spec *openapi.OpenAPISpec) *tree.Tree {
 	return tree.PathsToTree(endpoints)
 }
 
-func Run(spec *openapi.OpenAPISpec, flat bool) {
+func Run(spec *openapi.OpenAPISpec, flat bool, focus preview.Focus, mime preview.MimeTypes) {
 	t := uiTree(spec)
 
 	if flat {
 		t.Flatten()
 	}
 
-	m := initialModel(spec, t)
+	m := initialModel(spec, t, focus, mime)
 	p := tea.NewProgram(m)
 
 	result, err := p.Run()
