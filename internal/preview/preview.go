@@ -147,11 +147,26 @@ type ResizeMsg struct {
 
 var hasDarkBG = lg.HasDarkBackground(os.Stdin, os.Stdout)
 
-func newRenderer(width int) *glamour.TermRenderer {
+func tab(str string, selected bool) string {
+	str = strings.ToUpper(str)
+	// Light automatically adds spacing around code blocks when selected
+	light := !hasDarkBG
+	if light && !selected {
+		return "&nbsp;" + str + "&nbsp;"
+	}
 
+	if selected {
+		return "`" + str + "`"
+
+	}
+
+	return str
+}
+
+func newRenderer(width int) *glamour.TermRenderer {
 	theme := styles.LightStyle
 	if hasDarkBG {
-		theme = styles.DraculaStyle
+		theme = styles.TokyoNightStyle
 	}
 
 	renderer, _ := glamour.NewTermRenderer(glamour.WithWordWrap(width), glamour.WithStandardStyle(theme))
@@ -304,60 +319,28 @@ func (s Model) preview() tea.Cmd {
 			md += "> version: " + s.spec.Info.Version
 
 		} else if isPath {
-			if focus.Parameters {
-				md += "`PARAMS`"
-			} else {
-				md += "PARAMS"
-			}
+			md += tab("params", focus.Parameters)
 			md += " "
 
-			if focus.Body {
-				md += "`BODY`"
-			} else {
-				md += "BODY"
-			}
+			md += tab("body", focus.Body)
 			md += " "
 
-			if focus.Responses {
-				md += "`RESPONSES`"
-			} else {
-				md += "RESPONSES"
-			}
+			md += tab("responses", focus.Responses)
 			md += " "
 
-			if focus.Codes {
-				md += "`CODES`"
-			} else {
-				md += "CODES"
-			}
+			md += tab("codes", focus.Codes)
 			md += " "
 
-			if focus.Schemas {
-				md += "`SCHEMAS`"
-			} else {
-				md += "SCHEMAS"
-			}
+			md += tab("schemas", focus.Schemas)
 			md += " "
 
-			if mimes.Json {
-				md += "`JSON`"
-			} else {
-				md += "JSON"
-			}
+			md += tab("json", mimes.Json)
 			md += " "
 
-			if mimes.Xml {
-				md += "`XML`"
-			} else {
-				md += "XML"
-			}
+			md += tab("xml", mimes.Xml)
 			md += " "
 
-			if mimes.Text {
-				md += "`TEXT`"
-			} else {
-				md += "TEXT"
-			}
+			md += tab("text", mimes.Text)
 			md += " "
 
 			md += "\n\n"
@@ -372,16 +355,16 @@ func (s Model) preview() tea.Cmd {
 			method := p[m]
 
 			for i, m := range methods {
-				if i == methodIndex {
-					md += "`" + strings.ToUpper(m) + "`"
-				} else {
-					md += strings.ToUpper(m)
-
-				}
+				md += tab(m, i == methodIndex)
 				md += "  "
 			}
-
 			md += "\n\n"
+
+			if len(method.Tags) > 0 {
+				md += "**Tags: #" + strings.Join(method.Tags, " #") + "**"
+				md += "\n\n"
+			}
+
 			md += "# " + method.Summary
 			md += "\n\n"
 			md += "> " + method.Description
